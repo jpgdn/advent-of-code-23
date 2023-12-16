@@ -1,63 +1,74 @@
-def _make_graph(lines,c_start,verbose=False):
+from pprint import pprint
 
-    # Allowable neighbors
-    nb = { c_start: [(1,0),(0,1),(-1,0),(0,-1)],
-           '-': [(-1,0),(1,0)],
+def _neighbor_map(lines,c_start,s_node):
+    """Create a dictionarity of allowed neighbors for each symbol"""
+    # Neighbors for each pipe symbol
+    nb = { '-': [(-1,0),(1,0)],
            '|': [(0,-1),(0,1)],
            '7': [(-1,0),(0,1)],
            'J': [(0,-1),(-1,0)],
            'L': [(0,-1),(1,0)],
            'F': [(0,1),(1,0)] }
-    
+
+    # Add S's neighbors by checking for neighbors that point back to S
+    max_i, max_j = len(lines[0]), len(lines)
+    s_nb = []
+    for d in [(1,0),(0,1),(-1,0),(0,-1)]:
+        i = s_node[0]+d[0]
+        j = s_node[1]+d[1]
+        if i in range(max_i) and j in range(max_j):
+            c = lines[j][i]
+            if c in nb:
+                for nd in nb[c]:
+                    if nd[0] == -d[0] and nd[1]== -d[1]:   # OK, points back to me
+                        s_nb += [d]
+    nb[c_start] = s_nb
+    return nb
+
+def _make_graph(lines,c_start,verbose=False):
+    """Create a list of nodes starting with c_start and ending one step before returning to c_start"""
     # Find starting node
     for j, line in enumerate(lines):
         if c_start in line:
             s_node = (line.index(c_start),j)
             break
-  
+
+    nb = _neighbor_map(lines,c_start,s_node)
+
     graph = [{'pos': s_node, 'c': c_start}]
     prev_node = None
     cur_node = s_node
     c = c_start
-    max_i, max_j = len(lines[0]), len(lines)
     found_s = False
     while not found_s:
         # Find a neighbor
-        found_nb = False
         for d in nb[c]:
             i = cur_node[0]+d[0]
             j = cur_node[1]+d[1]
-            # Don't go outside the matrix and don't go back to where we came from
-            if i in range(max_i) and j in range(max_j) and (i,j) != prev_node:
+            if (i,j) != prev_node:
+                # Assuming each node has exactly two neighbors, this is the one that doesn't go back to where we came from
                 c = lines[j][i]
                 if c==c_start:
                     found_s = True
-                    found_nb = True
-                    break
-                elif c in nb:
-                    for nd in nb[c]:
-                        if nd[0] == -d[0] and nd[1]== -d[1]:   # OK, points back to me
-                            graph.append({'pos': (i,j), 'c': c})
-                            found_nb = True
-                            break   # Stop checking my neighbor's neighbors
-            if found_nb:
+                else:
+                    graph.append({'pos': (i,j), 'c': c})
                 break   # Stop checking my neighbors
         prev_node = cur_node
         cur_node = (i,j)
 
     return graph
 
-
 def part1(fn,verbose=False):
+    """Solve part 1"""
     with open(fn, 'r') as file:
         lines = [s.strip() for s in file.readlines()]
     graph = _make_graph(lines,'S',verbose)
     return len(graph) // 2
 
 def part2(fn,verbose=False):
+    """Solve part 2"""
     with open(fn, 'r') as file:
         lines = [s.strip() for s in file.readlines()]
-
     graph = _make_graph(lines,'S',verbose)
 
     # Create a picture with the graph characters and '.' as background
